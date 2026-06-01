@@ -1,4 +1,5 @@
 import { createReadStream, unlinkSync } from "fs";
+import { basename } from "path";
 import { Telegraf } from "telegraf";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
@@ -36,7 +37,7 @@ bot.on("text", async (ctx) => {
 
   try {
     await ctx.replyWithDocument(
-      { source: createReadStream(filePath) },
+      { source: createReadStream(filePath), filename: basename(filePath) },
       { caption: url },
     );
     await ctx.telegram.editMessageText(
