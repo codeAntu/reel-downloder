@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -9,4 +10,5 @@ export const config = {
   OUTPUT_FORMAT: "%(uploader)s - %(title)s - %(id)s.%(ext)s",
   VIDEO_FORMAT: "mp4",
   LOG_LEVEL: "info",
+  TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN ?? "",
 };

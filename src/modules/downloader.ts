@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { randomUUID } from "crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "fs";
 import { join } from "path";
 import youtubedl from "yt-dlp-exec";
 import { config } from "../config.js";
@@ -124,4 +131,31 @@ export async function downloadReels(
   }
 
   return downloadWithConcurrency(links, concurrency, onProgress);
+}
+
+export async function downloadReelForBot(url: string): Promise<string | null> {
+  if (!existsSync(config.REELS_OUTPUT_DIR)) {
+    mkdirSync(config.REELS_OUTPUT_DIR, { recursive: true });
+  }
+
+  const id = randomUUID();
+  const outputTemplate = join(config.REELS_OUTPUT_DIR, `${id}.%(ext)s`);
+
+  try {
+    await youtubedl(url, {
+      output: outputTemplate,
+      format: "b[ext=mp4]/best",
+      mergeOutputFormat: "mp4",
+    });
+
+    const expectedPath = join(config.REELS_OUTPUT_DIR, `${id}.mp4`);
+    if (existsSync(expectedPath)) return expectedPath;
+
+    const match = readdirSync(config.REELS_OUTPUT_DIR).find((f) =>
+      f.startsWith(id),
+    );
+    return match ? join(config.REELS_OUTPUT_DIR, match) : null;
+  } catch {
+    return null;
+  }
 }
