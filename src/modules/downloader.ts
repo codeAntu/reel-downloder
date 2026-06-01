@@ -50,7 +50,7 @@ async function downloadSingleReel(url: string): Promise<boolean> {
   try {
     await youtubedl(url, {
       output: `${config.REELS_OUTPUT_DIR}/${config.OUTPUT_FORMAT}`,
-      format: "b[ext=mp4]/best",
+      format: "bestvideo+bestaudio/best",
       mergeOutputFormat: "mp4",
     });
     saveDownloadedUrl(url);
@@ -144,7 +144,7 @@ export async function downloadReelForBot(url: string): Promise<string | null> {
   try {
     await youtubedl(url, {
       output: outputTemplate,
-      format: "b[ext=mp4]/best",
+      format: "bestvideo+bestaudio/best",
       mergeOutputFormat: "mp4",
     });
 

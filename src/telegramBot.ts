@@ -35,7 +35,7 @@ bot.on("text", async (ctx) => {
   }
 
   try {
-    await ctx.replyWithVideo(
+    await ctx.replyWithDocument(
       { source: createReadStream(filePath) },
       { caption: url },
     );
