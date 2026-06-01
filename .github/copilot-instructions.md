@@ -1,0 +1,11 @@
+- I am using npm package manager
+- Do not add unnecessary comments for my understanding.
+- No need to fix formatting related issues.
+- No need to create documentation files nor markdown files.
+- Always check for typescript errors before providing the final code in the editor.
+- Keep the implementation simpler, keep the code cleaner, and if possible keep the utility functions or pure functions outside at the root.
+- Patch fixes are not allowed, always provide a proper solution to the problem. Find the root cause and fix it.
+- Check type errors using `npm run ts`
+- `as any` type usage is not allowed
+- Think hard, take your time and implement it nicely, with good code quality, readable and efficient.
+- When I ask to fix anything do not patch fix, update anything you want but make the code very very well structured, clean, efficient and with good code quality.
