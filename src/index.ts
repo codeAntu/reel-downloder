@@ -1,3 +1,5 @@
+import { existsSync } from "fs";
+import { resolve } from "path";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 import { extractLinksFromChat } from "./modules/chatParser.js";
@@ -5,8 +7,17 @@ import { downloadReels } from "./modules/downloader.js";
 
 async function main() {
   try {
-    logger.info("Extracting links from chat...");
-    const links = extractLinksFromChat(config.CHAT_FILE);
+    const targetFile = process.argv[2]
+      ? resolve(process.argv[2])
+      : config.CHAT_FILE;
+
+    logger.info(`Extracting links from: ${targetFile}`);
+    if (!existsSync(targetFile)) {
+      logger.error(`File does not exist: ${targetFile}`);
+      return;
+    }
+
+    const links = extractLinksFromChat(targetFile);
     logger.info(`Found ${links.length} unique links to download`);
 
     if (links.length === 0) {
@@ -21,7 +32,7 @@ async function main() {
           status === "CACHED" ? "📦 CACHED" : "⬇️ DOWNLOADING";
         logger.info(`[${current}/${total}] ${statusLabel}: ${url}`);
       },
-      20, // concurrency
+      5, // concurrency
     );
 
     logger.info("\n=== Download Summary ===");

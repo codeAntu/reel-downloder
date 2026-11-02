@@ -1,4 +1,5 @@
 import { createReadStream, unlinkSync } from "fs";
+import http from "http";
 import { basename } from "path";
 import { Telegraf } from "telegraf";
 import { config } from "./config.js";
@@ -10,6 +11,17 @@ if (!config.TELEGRAM_BOT_TOKEN)
   throw new Error("TELEGRAM_BOT_TOKEN is not set in .env");
 
 const bot = new Telegraf(config.TELEGRAM_BOT_TOKEN);
+
+// Lightweight HTTP server for Render / cloud health checks
+const PORT = process.env.PORT || 3000;
+const server = http.createServer((_req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("Bot is running!");
+});
+
+server.listen(PORT, () => {
+  logger.info(`Health check server listening on port ${PORT}`);
+});
 
 bot.on("text", async (ctx) => {
   const urlMatch = ctx.message.text.trim().match(/(https:\/\/[^\s]+)/);
@@ -36,10 +48,19 @@ bot.on("text", async (ctx) => {
   }
 
   try {
-    await ctx.replyWithDocument(
-      { source: createReadStream(filePath), filename: basename(filePath) },
-      { caption: url },
-    );
+    // Send as playable video first, fallback to document if format issues
+    try {
+      await ctx.replyWithVideo(
+        { source: createReadStream(filePath) },
+        { caption: url, supports_streaming: true },
+      );
+    } catch {
+      await ctx.replyWithDocument(
+        { source: createReadStream(filePath), filename: basename(filePath) },
+        { caption: url },
+      );
+    }
+
     await ctx.telegram.editMessageText(
       ctx.chat.id,
       statusMsg.message_id,
@@ -63,5 +84,11 @@ bot.on("text", async (ctx) => {
 
 bot.launch().then(() => logger.info("Bot started. Send a reel link to begin."));
 
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+process.once("SIGINT", () => {
+  bot.stop("SIGINT");
+  server.close();
+});
+process.once("SIGTERM", () => {
+  bot.stop("SIGTERM");
+  server.close();
+});
