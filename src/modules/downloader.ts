@@ -1,13 +1,6 @@
 import { randomUUID } from "crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  writeFileSync,
-} from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import youtubedl from "yt-dlp-exec";
 import { config } from "../config.js";
 import { logger } from "../logger.js";
 
@@ -59,7 +52,10 @@ async function downloadViaRapidApi(
   url: string,
   outputPath: string,
 ): Promise<boolean> {
-  if (!config.RAPIDAPI_KEY) return false;
+  if (!config.RAPIDAPI_KEY) {
+    logger.error("RAPIDAPI_KEY is not set in environment");
+    return false;
+  }
 
   try {
     const res = await fetch(
@@ -80,7 +76,7 @@ async function downloadViaRapidApi(
     const data: any = await res.json();
     if (!data || !data.download_url) {
       logger.warn(
-        `RapidAPI: No download_url returned for ${url} (${data?.message || "Unknown error"})`,
+        `RapidAPI: No download_url returned for ${url} (${data?.message || "Private/Deleted"})`,
       );
       return false;
     }
@@ -97,7 +93,7 @@ async function downloadViaRapidApi(
     writeFileSync(outputPath, Buffer.from(arrayBuffer));
     return true;
   } catch (error: any) {
-    logger.warn(`RapidAPI error for ${url}: ${error?.message || error}`);
+    logger.warn(`Download error for ${url}: ${error?.message || error}`);
     return false;
   }
 }
@@ -110,35 +106,12 @@ async function downloadSingleReel(url: string): Promise<boolean> {
   const reelId = idMatch ? idMatch[1] : randomUUID();
   const targetFile = join(outputDir, `${reelId}.mp4`);
 
-  // 1. Try RapidAPI first (handles copyright music, high speed, no IP bans)
-  if (config.RAPIDAPI_KEY) {
-    const success = await downloadViaRapidApi(url, targetFile);
-    if (success) {
-      saveDownloadedUrl(url);
-      return true;
-    }
-  }
-
-  // 2. Fallback to yt-dlp if RapidAPI fails or isn't configured
-  try {
-    const options: any = {
-      output: `${outputDir}/${config.OUTPUT_FORMAT}`,
-      format: "bestvideo+bestaudio/best",
-      mergeOutputFormat: "mp4",
-    };
-
-    const cookiesPath = join(process.cwd(), "cookies.txt");
-    if (existsSync(cookiesPath)) {
-      options.cookies = cookiesPath;
-    }
-
-    await youtubedl(url, options);
+  const success = await downloadViaRapidApi(url, targetFile);
+  if (success) {
     saveDownloadedUrl(url);
     return true;
-  } catch (error: any) {
-    logger.error(`yt-dlp failed to download ${url}: ${error?.message || error}`);
-    return false;
   }
+  return false;
 }
 
 async function downloadWithConcurrency(
@@ -213,40 +186,13 @@ export async function downloadReels(
 
 export async function downloadReelForBot(url: string): Promise<string | null> {
   const outputDir = getTodayOutputDir();
-
   const id = randomUUID();
   const targetFile = join(outputDir, `${id}.mp4`);
 
-  // 1. Try RapidAPI first
-  if (config.RAPIDAPI_KEY) {
-    const success = await downloadViaRapidApi(url, targetFile);
-    if (success && existsSync(targetFile)) {
-      return targetFile;
-    }
+  const success = await downloadViaRapidApi(url, targetFile);
+  if (success && existsSync(targetFile)) {
+    return targetFile;
   }
 
-  // 2. Fallback to yt-dlp
-  try {
-    const outputTemplate = join(outputDir, `${id}.%(ext)s`);
-    const options: any = {
-      output: outputTemplate,
-      format: "bestvideo+bestaudio/best",
-      mergeOutputFormat: "mp4",
-    };
-
-    const cookiesPath = join(process.cwd(), "cookies.txt");
-    if (existsSync(cookiesPath)) {
-      options.cookies = cookiesPath;
-    }
-
-    await youtubedl(url, options);
-
-    if (existsSync(targetFile)) return targetFile;
-
-    const match = readdirSync(outputDir).find((f) => f.startsWith(id));
-    return match ? join(outputDir, match) : null;
-  } catch (error: any) {
-    logger.error(`Bot download failed for ${url}: ${error?.message || error}`);
-    return null;
-  }
+  return null;
 }
